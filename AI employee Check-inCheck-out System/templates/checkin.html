@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+
+{% block title %}Check In / Out — AI Attendance System{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Check In / Check Out</h1>
+        <p class="page-subtitle">Face the camera to automatically check in or out</p>
+    </div>
+</div>
+
+<div class="checkin-grid">
+    <!-- Camera Section -->
+    <div class="card camera-card">
+        <div class="card-header">
+            <h2 class="card-title"><i class="bi bi-camera-video-fill"></i> Camera Feed</h2>
+            <div class="camera-controls">
+                <button class="btn btn-outline btn-sm" id="toggleCamera" onclick="toggleCamera()">
+                    <i class="bi bi-camera-video"></i> <span id="cameraLabel">Start Camera</span>
+                </button>
+            </div>
+        </div>
+        <div class="card-body camera-body">
+            <div class="camera-container" id="cameraContainer">
+                <video id="videoElement" autoplay playsinline></video>
+                <canvas id="captureCanvas" style="display: none;"></canvas>
+                <div class="camera-overlay" id="cameraOverlay">
+                    <div class="scan-frame">
+                        <div class="scan-corner top-left"></div>
+                        <div class="scan-corner top-right"></div>
+                        <div class="scan-corner bottom-left"></div>
+                        <div class="scan-corner bottom-right"></div>
+                    </div>
+                    <p class="camera-hint" id="cameraHint">Click "Start Camera" to begin</p>
+                </div>
+            </div>
+
+            <!-- Recognition Result -->
+            <div class="recognition-result" id="recognitionResult" style="display: none;">
+                <div class="result-content" id="resultContent"></div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="checkin-actions">
+                <button class="btn btn-success btn-lg" id="btnCheckIn" onclick="captureAndRecognize('checkin')" disabled>
+                    <i class="bi bi-box-arrow-in-right"></i> Check In
+                </button>
+                <button class="btn btn-warning btn-lg" id="btnCheckOut" onclick="captureAndRecognize('checkout')" disabled>
+                    <i class="bi bi-box-arrow-right"></i> Check Out
+                </button>
+                <button class="btn btn-primary btn-lg" id="btnAuto" onclick="captureAndRecognize('auto')" disabled>
+                    <i class="bi bi-magic"></i> Auto Detect
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Today's Log -->
+    <div class="card log-card">
+        <div class="card-header">
+            <h2 class="card-title"><i class="bi bi-clock-history"></i> Today's Log</h2>
+        </div>
+        <div class="card-body">
+            <div class="activity-list" id="todayLog">
+                {% if today_records %}
+                {% for record in today_records %}
+                <div class="activity-item">
+                    <div class="activity-avatar">
+                        <i class="bi bi-person-circle"></i>
+                    </div>
+                    <div class="activity-info">
+                        <span class="activity-name">{{ record.name }}</span>
+                        <span class="activity-dept">{{ record.department }}</span>
+                    </div>
+                    <div class="activity-time">
+                        <span class="badge badge-checkin"><i class="bi bi-box-arrow-in-right"></i> {{ record.check_in_time | format_time }}</span>
+                        {% if record.check_out_time %}
+                        <span class="badge badge-checkout"><i class="bi bi-box-arrow-right"></i> {{ record.check_out_time | format_time }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="activity-status">
+                        <span class="status-badge status-{{ record.status }}">{{ record.status | capitalize }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-inbox"></i>
+                    <p>No check-ins yet today.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Server-side Video Feed (Alternative) -->
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+        <h2 class="card-title"><i class="bi bi-broadcast"></i> Server Camera (Live Recognition)</h2>
+        <button class="btn btn-outline btn-sm" id="toggleServerCam" onclick="toggleServerCamera()">
+            <i class="bi bi-play-fill"></i> <span id="serverCamLabel">Show Feed</span>
+        </button>
+    </div>
+    <div class="card-body" id="serverCamBody" style="display: none;">
+        <div class="server-camera-container">
+            <img id="serverFeed" src="" alt="Server Camera Feed" class="server-feed">
+        </div>
+        <p class="text-muted text-center" style="margin-top: 0.75rem;">
+            <i class="bi bi-info-circle"></i> Server-side face recognition with real-time bounding boxes
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let stream = null;
+    let cameraActive = false;
+
+    async function toggleCamera() {
+        const video = document.getElementById('videoElement');
+        const label = document.getElementById('cameraLabel');
+        const hint = document.getElementById('cameraHint');
+        const overlay = document.getElementById('cameraOverlay');
+
+        if (cameraActive) {
+            // Stop camera
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            video.srcObject = null;
+            cameraActive = false;
+            label.textContent = 'Start Camera';
+            hint.textContent = 'Click "Start Camera" to begin';
+            overlay.classList.remove('camera-active');
+            document.getElementById('btnCheckIn').disabled = true;
+            document.getElementById('btnCheckOut').disabled = true;
+            document.getElementById('btnAuto').disabled = true;
+        } else {
+            // Start camera
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 640, height: 480, facingMode: 'user' }
+                });
+                video.srcObject = stream;
+                cameraActive = true;
+                label.textContent = 'Stop Camera';
+                hint.textContent = 'Face the camera and click a button below';
+                overlay.classList.add('camera-active');
+                document.getElementById('btnCheckIn').disabled = false;
+                document.getElementById('btnCheckOut').disabled = false;
+                document.getElementById('btnAuto').disabled = false;
+            } catch (err) {
+                alert('Cannot access camera: ' + err.message);
+            }
+        }
+    }
+
+    async function captureAndRecognize(action) {
+        if (!cameraActive) return;
+
+        const video = document.getElementById('videoElement');
+        const canvas = document.getElementById('captureCanvas');
+        const resultDiv = document.getElementById('recognitionResult');
+        const resultContent = document.getElementById('resultContent');
+
+        // Capture frame
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0);
+        const imageData = canvas.toDataURL('image/jpeg', 0.9);
+
+        // Show loading
+        resultDiv.style.display = 'block';
+        resultContent.innerHTML = '<div class="result-loading"><div class="spinner"></div><span>Recognizing face...</span></div>';
+
+        try {
+            const response = await fetch('/api/recognize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: imageData, action: action })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                const actionLabel = data.action === 'checkin' ? 'Checked In' : 'Checked Out';
+                const iconClass = data.action === 'checkin' ? 'bi-check-circle-fill' : 'bi-box-arrow-right';
+                resultContent.innerHTML = `
+                    <div class="result-success">
+                        <i class="bi ${iconClass}"></i>
+                        <div class="result-details">
+                            <strong>${data.employee_name}</strong>
+                            <span>${actionLabel} — Confidence: ${data.confidence}%</span>
+                            <span class="result-msg">${data.message}</span>
+                        </div>
+                    </div>
+                `;
+                // Refresh the log after 2 seconds
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                resultContent.innerHTML = `
+                    <div class="result-error">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <div class="result-details">
+                            <strong>${data.employee_name || 'Unknown'}</strong>
+                            <span>${data.message}</span>
+                        </div>
+                    </div>
+                `;
+            }
+        } catch (err) {
+            resultContent.innerHTML = `
+                <div class="result-error">
+                    <i class="bi bi-wifi-off"></i>
+                    <span>Connection error. Please try again.</span>
+                </div>
+            `;
+        }
+    }
+
+    function toggleServerCamera() {
+        const body = document.getElementById('serverCamBody');
+        const feed = document.getElementById('serverFeed');
+        const label = document.getElementById('serverCamLabel');
+
+        if (body.style.display === 'none') {
+            body.style.display = 'block';
+            feed.src = '/video_feed';
+            label.textContent = 'Hide Feed';
+        } else {
+            body.style.display = 'none';
+            feed.src = '';
+            label.textContent = 'Show Feed';
+        }
+    }
+</script>
+{% endblock %}

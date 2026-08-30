@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}Attendance Records — AI Attendance System{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Attendance Records</h1>
+        <p class="page-subtitle">View and export attendance history</p>
+    </div>
+    <a href="{{ url_for('export_csv', start_date=start_date, end_date=end_date) }}" class="btn btn-outline">
+        <i class="bi bi-download"></i> Export CSV
+    </a>
+</div>
+
+<!-- Date Filter -->
+<div class="card filter-card">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('records') }}" class="filter-form" id="filterForm">
+            <div class="filter-group">
+                <label class="form-label">From</label>
+                <input type="date" class="form-input" name="start_date" id="startDate" value="{{ start_date }}">
+            </div>
+            <div class="filter-group">
+                <label class="form-label">To</label>
+                <input type="date" class="form-input" name="end_date" id="endDate" value="{{ end_date }}">
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-search"></i> Filter
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Records Table -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title"><i class="bi bi-table"></i> Records ({{ records | length }})</h2>
+    </div>
+    <div class="card-body table-responsive">
+        {% if records %}
+        <table class="data-table" id="recordsTable">
+            <thead>
+                <tr>
+                    <th>Employee</th>
+                    <th>Department</th>
+                    <th>Date</th>
+                    <th>Check In</th>
+                    <th>Check Out</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in records %}
+                <tr>
+                    <td>
+                        <div class="table-employee">
+                            <div class="table-avatar"><i class="bi bi-person-circle"></i></div>
+                            <span>{{ record.name }}</span>
+                        </div>
+                    </td>
+                    <td><span class="badge badge-dept">{{ record.department }}</span></td>
+                    <td>{{ record.date | format_date }}</td>
+                    <td>{{ record.check_in_time | format_time }}</td>
+                    <td>{{ record.check_out_time | format_time }}</td>
+                    <td><span class="status-badge status-{{ record.status }}">{{ record.status | capitalize }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-calendar-x"></i>
+            <p>No records found for the selected date range.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

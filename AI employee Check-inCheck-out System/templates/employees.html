@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block title %}Employees — AI Attendance System{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Employees</h1>
+        <p class="page-subtitle">Manage registered employees ({{ employees | length }} total)</p>
+    </div>
+    <a href="{{ url_for('register') }}" class="btn btn-primary">
+        <i class="bi bi-person-plus"></i> Add Employee
+    </a>
+</div>
+
+{% if employees %}
+<div class="employee-grid">
+    {% for emp in employees %}
+    <div class="employee-card" id="empCard{{ emp.id }}">
+        <div class="employee-card-header">
+            <div class="employee-avatar-lg">
+                {% if emp.photo_path %}
+                <img src="{{ url_for('static', filename='../' + emp.photo_path) }}" alt="{{ emp.name }}"
+                     onerror="this.parentElement.innerHTML='<i class=\'bi bi-person-fill\'></i>'">
+                {% else %}
+                <i class="bi bi-person-fill"></i>
+                {% endif %}
+            </div>
+            <div class="employee-badge">
+                <span class="badge badge-dept">{{ emp.department }}</span>
+            </div>
+        </div>
+        <div class="employee-card-body">
+            <h3 class="employee-name">{{ emp.name }}</h3>
+            <p class="employee-position">{{ emp.position or 'No position set' }}</p>
+            <p class="employee-since">
+                <i class="bi bi-calendar-plus"></i> Registered {{ emp.registered_at | format_datetime }}
+            </p>
+        </div>
+        <div class="employee-card-actions">
+            <button class="btn btn-outline btn-sm" onclick="editEmployee({{ emp.id }}, '{{ emp.name }}', '{{ emp.department }}', '{{ emp.position }}')">
+                <i class="bi bi-pencil"></i> Edit
+            </button>
+            <form method="POST" action="{{ url_for('remove_employee', employee_id=emp.id) }}"
+                  onsubmit="return confirm('Are you sure you want to remove {{ emp.name }}?');"
+                  style="display: inline;">
+                <button type="submit" class="btn btn-danger btn-sm">
+                    <i class="bi bi-trash"></i> Remove
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body">
+        <div class="empty-state">
+            <i class="bi bi-people"></i>
+            <p>No employees registered yet.</p>
+            <a href="{{ url_for('register') }}" class="btn btn-primary">Register First Employee</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="bi bi-pencil-square"></i> Edit Employee</h2>
+            <button class="modal-close" onclick="closeModal()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <form method="POST" id="editForm">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" class="form-input" name="name" id="editName" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Department</label>
+                    <select class="form-input" name="department" id="editDepartment">
+                        <option value="General">General</option>
+                        <option value="Engineering">Engineering</option>
+                        <option value="Marketing">Marketing</option>
+                        <option value="Sales">Sales</option>
+                        <option value="HR">Human Resources</option>
+                        <option value="Finance">Finance</option>
+                        <option value="Operations">Operations</option>
+                        <option value="IT">IT</option>
+                        <option value="Design">Design</option>
+                        <option value="Management">Management</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Position</label>
+                    <input type="text" class="form-input" name="position" id="editPosition">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function editEmployee(id, name, department, position) {
+        document.getElementById('editForm').action = `/employee/${id}/edit`;
+        document.getElementById('editName').value = name;
+        document.getElementById('editDepartment').value = department;
+        document.getElementById('editPosition').value = position;
+        document.getElementById('editModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+
+    // Close modal on overlay click
+    document.getElementById('editModal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeModal();
+    });
+</script>
+{% endblock %}

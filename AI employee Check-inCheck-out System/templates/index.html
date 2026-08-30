@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard — AI Attendance System{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle">Real-time attendance overview for {{ current_date | format_date }}</p>
+    </div>
+    <a href="{{ url_for('checkin_page') }}" class="btn btn-primary">
+        <i class="bi bi-camera-video"></i> Open Check-In
+    </a>
+</div>
+
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="stat-card stat-total">
+        <div class="stat-icon">
+            <i class="bi bi-people"></i>
+        </div>
+        <div class="stat-info">
+            <span class="stat-value" id="statTotal">{{ stats.total_employees }}</span>
+            <span class="stat-label">Total Employees</span>
+        </div>
+    </div>
+
+    <div class="stat-card stat-present">
+        <div class="stat-icon">
+            <i class="bi bi-person-check"></i>
+        </div>
+        <div class="stat-info">
+            <span class="stat-value" id="statPresent">{{ stats.present_today }}</span>
+            <span class="stat-label">Present Today</span>
+        </div>
+    </div>
+
+    <div class="stat-card stat-absent">
+        <div class="stat-icon">
+            <i class="bi bi-person-x"></i>
+        </div>
+        <div class="stat-info">
+            <span class="stat-value" id="statAbsent">{{ stats.absent_today }}</span>
+            <span class="stat-label">Absent</span>
+        </div>
+    </div>
+
+    <div class="stat-card stat-late">
+        <div class="stat-icon">
+            <i class="bi bi-clock-history"></i>
+        </div>
+        <div class="stat-info">
+            <span class="stat-value" id="statLate">{{ stats.late_today }}</span>
+            <span class="stat-label">Late Arrivals</span>
+        </div>
+    </div>
+</div>
+
+<!-- Charts & Activity -->
+<div class="dashboard-grid">
+    <!-- Weekly Chart -->
+    <div class="card chart-card">
+        <div class="card-header">
+            <h2 class="card-title"><i class="bi bi-bar-chart-line"></i> Weekly Attendance</h2>
+        </div>
+        <div class="card-body">
+            <canvas id="weeklyChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Attendance Breakdown -->
+    <div class="card donut-card">
+        <div class="card-header">
+            <h2 class="card-title"><i class="bi bi-pie-chart"></i> Today's Breakdown</h2>
+        </div>
+        <div class="card-body">
+            <canvas id="breakdownChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title"><i class="bi bi-activity"></i> Recent Activity</h2>
+        <a href="{{ url_for('records') }}" class="card-action">View All <i class="bi bi-arrow-right"></i></a>
+    </div>
+    <div class="card-body">
+        {% if today_records %}
+        <div class="activity-list">
+            {% for record in today_records[:10] %}
+            <div class="activity-item">
+                <div class="activity-avatar">
+                    <i class="bi bi-person-circle"></i>
+                </div>
+                <div class="activity-info">
+                    <span class="activity-name">{{ record.name }}</span>
+                    <span class="activity-dept">{{ record.department }}</span>
+                </div>
+                <div class="activity-time">
+                    {% if record.check_out_time %}
+                    <span class="badge badge-checkout"><i class="bi bi-box-arrow-right"></i> {{ record.check_out_time | format_time }}</span>
+                    {% endif %}
+                    <span class="badge badge-checkin"><i class="bi bi-box-arrow-in-right"></i> {{ record.check_in_time | format_time }}</span>
+                </div>
+                <div class="activity-status">
+                    <span class="status-badge status-{{ record.status }}">{{ record.status | capitalize }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-inbox"></i>
+            <p>No attendance records for today yet.</p>
+            <a href="{{ url_for('checkin_page') }}" class="btn btn-primary btn-sm">Start Check-In</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Weekly Chart
+    const weeklyData = {{ weekly | tojson }};
+    const weeklyLabels = weeklyData.map(d => {
+        const date = new Date(d.date);
+        return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    });
+
+    const weeklyCtx = document.getElementById('weeklyChart').getContext('2d');
+    new Chart(weeklyCtx, {
+        type: 'bar',
+        data: {
+            labels: weeklyLabels,
+            datasets: [
+                {
+                    label: 'On Time',
+                    data: weeklyData.map(d => d.on_time),
+                    backgroundColor: 'rgba(52, 211, 153, 0.8)',
+                    borderColor: 'rgba(52, 211, 153, 1)',
+                    borderWidth: 1,
+                    borderRadius: 6
+                },
+                {
+                    label: 'Late',
+                    data: weeklyData.map(d => d.late),
+                    backgroundColor: 'rgba(251, 191, 36, 0.8)',
+                    borderColor: 'rgba(251, 191, 36, 1)',
+                    borderWidth: 1,
+                    borderRadius: 6
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: '#94a3b8', font: { family: 'Inter' } }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#64748b', font: { family: 'Inter' } },
+                    grid: { color: 'rgba(148, 163, 184, 0.08)' }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: '#64748b', font: { family: 'Inter' }, stepSize: 1 },
+                    grid: { color: 'rgba(148, 163, 184, 0.08)' }
+                }
+            }
+        }
+    });
+
+    // Breakdown Donut
+    const breakdownCtx = document.getElementById('breakdownChart').getContext('2d');
+    const presentVal = {{ stats.present_today }};
+    const absentVal = {{ stats.absent_today }};
+    const lateVal = {{ stats.late_today }};
+    const onTimeVal = presentVal - lateVal;
+
+    new Chart(breakdownCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['On Time', 'Late', 'Absent'],
+            datasets: [{
+                data: [Math.max(onTimeVal, 0), lateVal, Math.max(absentVal, 0)],
+                backgroundColor: [
+                    'rgba(52, 211, 153, 0.85)',
+                    'rgba(251, 191, 36, 0.85)',
+                    'rgba(239, 68, 68, 0.85)'
+                ],
+                borderColor: [
+                    'rgba(52, 211, 153, 1)',
+                    'rgba(251, 191, 36, 1)',
+                    'rgba(239, 68, 68, 1)'
+                ],
+                borderWidth: 2,
+                hoverOffset: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: '#94a3b8', font: { family: 'Inter' }, padding: 16 }
+                }
+            }
+        }
+    });
+
+    // Auto-refresh stats every 30 seconds
+    setInterval(async () => {
+        try {
+            const res = await fetch('/api/stats');
+            const data = await res.json();
+            document.getElementById('statTotal').textContent = data.total_employees;
+            document.getElementById('statPresent').textContent = data.present_today;
+            document.getElementById('statAbsent').textContent = data.absent_today;
+            document.getElementById('statLate').textContent = data.late_today;
+        } catch (e) {}
+    }, 30000);
+</script>
+{% endblock %}

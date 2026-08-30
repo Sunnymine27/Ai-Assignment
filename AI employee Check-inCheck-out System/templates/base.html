@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI Employee Check-in/Check-out System — Face Recognition Attendance Tracking">
+    <title>{% block title %}AI Attendance System{% endblock %}</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <div class="logo-icon">
+                    <i class="bi bi-person-bounding-box"></i>
+                </div>
+                <div class="logo-text">
+                    <span class="logo-title">AI Attendance</span>
+                    <span class="logo-subtitle">Face Recognition System</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar-menu">
+            <a href="{{ url_for('index') }}" class="menu-item {% if request.endpoint == 'index' %}active{% endif %}" id="nav-dashboard">
+                <i class="bi bi-grid-1x2-fill"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="{{ url_for('checkin_page') }}" class="menu-item {% if request.endpoint == 'checkin_page' %}active{% endif %}" id="nav-checkin">
+                <i class="bi bi-camera-video-fill"></i>
+                <span>Check In / Out</span>
+            </a>
+            <a href="{{ url_for('register') }}" class="menu-item {% if request.endpoint == 'register' %}active{% endif %}" id="nav-register">
+                <i class="bi bi-person-plus-fill"></i>
+                <span>Register Employee</span>
+            </a>
+            <a href="{{ url_for('records') }}" class="menu-item {% if request.endpoint == 'records' %}active{% endif %}" id="nav-records">
+                <i class="bi bi-journal-text"></i>
+                <span>Attendance Records</span>
+            </a>
+            <a href="{{ url_for('employees') }}" class="menu-item {% if request.endpoint == 'employees' %}active{% endif %}" id="nav-employees">
+                <i class="bi bi-people-fill"></i>
+                <span>Employees</span>
+            </a>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="system-status">
+                <div class="status-dot online"></div>
+                <span>System Online</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Bar -->
+        <header class="topbar">
+            <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
+                <i class="bi bi-list"></i>
+            </button>
+            <div class="topbar-right">
+                <div class="current-time" id="currentTime"></div>
+                <div class="current-date" id="currentDate"></div>
+            </div>
+        </header>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+            <div class="flash-message flash-{{ category }}" onclick="this.remove()">
+                <i class="bi {% if category == 'success' %}bi-check-circle-fill{% elif category == 'error' %}bi-x-circle-fill{% else %}bi-info-circle-fill{% endif %}"></i>
+                <span>{{ message }}</span>
+                <button class="flash-close"><i class="bi bi-x"></i></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Page Content -->
+        <div class="page-content">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
