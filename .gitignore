@@ -1,8 +1,1 @@
-# Project runtime files
-**/.venv/
-**/.venv312/
-**/__pycache__/
-**/*.pyc
-**/*.pyo
-**/attendance.db
-**/.DS_Store
+AI employee Check-inCheck-out System/known_faces/
